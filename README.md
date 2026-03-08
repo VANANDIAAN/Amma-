@@ -246,4 +246,3 @@ draw(); spawn(180); setInterval(()=>spawn(6),1200);
 </script>
 </body>
 </html>
-</html>
