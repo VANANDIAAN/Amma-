@@ -116,10 +116,22 @@
     .lightbox img{max-width:92vw;max-height:92vh;border-radius:12px;box-shadow:0 0 80px rgba(0,0,0,.6);animation:zoomIn .25s ease}
     @keyframes zoomIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
     .lb-close{position:fixed;top:1.2rem;right:1.5rem;color:white;font-size:2rem;cursor:pointer;background:rgba(255,255,255,.15);border-radius:50%;width:2.5rem;height:2.5rem;display:flex;align-items:center;justify-content:center}
+
+    /* ── FLOATING HEARTS ── */
+    .heart-bg{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;overflow:hidden;}
+    .heart-el{position:absolute;bottom:-120px;animation:heartRise linear infinite;opacity:0;pointer-events:none;user-select:none;}
+    @keyframes heartRise{
+      0%  {transform:translateY(0)   rotate(var(--rot)) scale(1);opacity:0;}
+      6%  {opacity:var(--op);}
+      85% {opacity:var(--op);}
+      100%{transform:translateY(-105vh) rotate(calc(var(--rot) + 360deg)) scale(1);opacity:0;}
+    }
   </style>
 </head>
 <body>
 <canvas id="confetti-canvas"></canvas>
+
+<div class="heart-bg" id="heart-bg"></div>
 <div class="lightbox" id="lightbox">
   <span class="lb-close" id="lb-close">✕</span>
   <img id="lb-img" src="" alt=""/>
@@ -273,7 +285,7 @@
 <!-- CAKE -->
 <section class="cake-section" id="cake-section">
   <div class="chapter" style="padding-top:0"><div class="chapter-line"></div><h2>🎂 Make a Wish, Amma!</h2><div class="chapter-line"></div></div>
-  <span class="cake-emoji">🎂</span>
+  <span class="cake-emoji" onclick="openLovePage()" style="cursor:pointer;" title="Click me!">🎂</span>
   <div class="candles">🕯🕯🕯🕯🕯🕯🕯🕯🕯🕯</div>
   <p class="cake-msg">Close your eyes, make a wish, and blow! 💫</p>
 </section>
@@ -389,6 +401,257 @@ function draw() {
   requestAnimationFrame(draw);
 }
 draw(); spawn(200); setInterval(() => spawn(6), 1200);
+
+// ── FLOATING HEARTS (fixed overlay, continuous spawn) ──
+const HEART_EMOJIS = ['❤️','🧡','💛','💚','💙','💜','🩷','💗','💖','💝','💓','🌸'];
+const heartBg = document.getElementById('heart-bg');
+
+function spawnHeart() {
+  const el = document.createElement('div');
+  el.className = 'heart-el';
+  el.textContent = HEART_EMOJIS[Math.floor(Math.random() * HEART_EMOJIS.length)];
+  const size = 2.5 + Math.random() * 4.5;
+  const left = Math.random() * 100;
+  const dur  = 7 + Math.random() * 10;
+  const rot  = (Math.random() - 0.5) * 40;
+  const op   = 0.55 + Math.random() * 0.4;
+  el.style.cssText = `
+    left:${left}%;
+    font-size:${size}rem;
+    animation-duration:${dur}s;
+    animation-delay:0s;
+    --rot:${rot}deg;
+    --op:${op};
+    filter: drop-shadow(0 0 10px rgba(255,100,150,0.6));
+  `;
+  heartBg.appendChild(el);
+  // Remove after animation completes to avoid DOM bloat
+  setTimeout(() => el.remove(), (dur + 0.5) * 1000);
+}
+
+// Initial burst so screen isn't empty
+for (let i = 0; i < 35; i++) {
+  const el = document.createElement('div');
+  el.className = 'heart-el';
+  el.textContent = HEART_EMOJIS[Math.floor(Math.random() * HEART_EMOJIS.length)];
+  const size = 2.5 + Math.random() * 4.5;
+  const left = Math.random() * 100;
+  const dur  = 7 + Math.random() * 10;
+  const delay = Math.random() * 14;
+  const rot  = (Math.random() - 0.5) * 40;
+  const op   = 0.55 + Math.random() * 0.4;
+  el.style.cssText = `
+    left:${left}%;
+    font-size:${size}rem;
+    animation-duration:${dur}s;
+    animation-delay:${delay}s;
+    --rot:${rot}deg;
+    --op:${op};
+    filter: drop-shadow(0 0 10px rgba(255,100,150,0.6));
+  `;
+  heartBg.appendChild(el);
+  setTimeout(() => el.remove(), (dur + delay + 0.5) * 1000);
+}
+
+// Continuously spawn new hearts every 600ms forever
+setInterval(spawnHeart, 600);
+
 </script>
+
+<!-- ── LOVE PAGE OVERLAY ── -->
+<div id="love-page" style="display:none;position:fixed;inset:0;z-index:2000;background:#1a0025;align-items:center;justify-content:center;flex-direction:column;text-align:center;overflow:hidden;">
+
+  <!-- animated gradient bg -->
+  <div style="position:absolute;inset:0;background:linear-gradient(135deg,#2d0035,#7a003a,#2d0035);background-size:400% 400%;animation:gradShift 5s ease infinite;z-index:0;"></div>
+
+  <!-- particle hearts canvas -->
+  <canvas id="love-canvas" style="position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;"></canvas>
+
+  <!-- big pulsing heart -->
+  <div style="position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.5rem;">
+    <div id="big-heart" style="font-size:clamp(8rem,25vw,18rem);line-height:1;animation:heartbeat 1.2s ease-in-out infinite;filter:drop-shadow(0 0 40px rgba(255,80,120,0.9)) drop-shadow(0 0 80px rgba(255,80,120,0.5));">❤️</div>
+    <div id="love-text" style="font-family:'Dancing Script',cursive;font-size:clamp(2.5rem,8vw,6rem);color:#fff;text-shadow:0 0 30px rgba(255,150,180,0.9),0 0 60px rgba(255,80,120,0.6);animation:textGlow 2s ease-in-out infinite;line-height:1.2;">We Love You<br>Amma!</div>
+    <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:clamp(1rem,3vw,1.8rem);color:rgba(255,200,220,0.85);margin-top:0.5rem;animation:fadeInUp 1s 0.5s ease both;opacity:0;">Forever and always 💕</div>
+    <button onclick="closeLovePage()" style="margin-top:2rem;background:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.4);color:#fff;font-family:'Nunito',sans-serif;font-size:1rem;padding:0.7rem 2rem;border-radius:50px;cursor:pointer;backdrop-filter:blur(10px);transition:background 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">← Go Back</button>
+  </div>
+</div>
+
+<style>
+  @keyframes heartbeat{0%,100%{transform:scale(1)}14%{transform:scale(1.18)}28%{transform:scale(1)}42%{transform:scale(1.12)}70%{transform:scale(1)}}
+  @keyframes textGlow{0%,100%{text-shadow:0 0 30px rgba(255,150,180,.9),0 0 60px rgba(255,80,120,.6)}50%{text-shadow:0 0 50px rgba(255,180,210,1),0 0 100px rgba(255,100,150,.9),0 0 140px rgba(255,50,100,.5)}}
+  @keyframes fadeInUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+</style>
+
+<script>
+function openLovePage() {
+  const page = document.getElementById('love-page');
+  page.style.display = 'flex';
+  startLoveCanvas();
+}
+function closeLovePage() {
+  document.getElementById('love-page').style.display = 'none';
+  stopLoveCanvas();
+}
+
+let loveAnimId = null;
+let loveRunning = false;
+
+function startLoveCanvas() {
+  loveRunning = true;
+  const canvas = document.getElementById('love-canvas');
+  const ctx = canvas.getContext('2d');
+
+  function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
+  // Hearts floating UP in the center
+  const HEART_CHARS = ['❤️','💕','💖','💗','💓','💞','💝','🩷'];
+  
+  // Flowers falling DOWN on the sides - actual flowers only
+  const FLOWERS = [
+    '🌸','🌺','🌻','🌹','🌷','🌼','💐','🪷','🏵️','🪻'
+  ];
+
+  const particles = [];
+  const flowers = [];
+
+  // Center rising hearts
+  for (let i = 0; i < 30; i++) {
+    particles.push({
+      x: 0.2 * canvas.width + Math.random() * 0.6 * canvas.width,
+      y: canvas.height + Math.random() * canvas.height,
+      char: HEART_CHARS[Math.floor(Math.random() * HEART_CHARS.length)],
+      size: 1.8 + Math.random() * 3,
+      speed: 0.9 + Math.random() * 1.6,
+      drift: (Math.random() - 0.5) * 0.8,
+      rot: 0,
+      rotSpeed: (Math.random() - 0.5) * 0.02,
+      alpha: 0.65 + Math.random() * 0.35,
+      type: 'heart'
+    });
+  }
+
+  // LEFT side flowers — falling down
+  for (let i = 0; i < 20; i++) {
+    const col = Math.random();  // 0 = far left, 1 = inner left
+    flowers.push({
+      x: col * canvas.width * 0.18,
+      y: -Math.random() * canvas.height * 2,
+      char: FLOWERS[Math.floor(Math.random() * FLOWERS.length)],
+      size: 1.6 + Math.random() * 3.2,
+      speed: 0.7 + Math.random() * 1.5,
+      drift: (Math.random() - 0.5) * 0.6,
+      rot: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() - 0.5) * 0.05,
+      alpha: 0.75 + Math.random() * 0.25,
+      side: 'left'
+    });
+  }
+
+  // RIGHT side flowers — falling down
+  for (let i = 0; i < 20; i++) {
+    const col = Math.random();
+    flowers.push({
+      x: canvas.width * 0.82 + col * canvas.width * 0.18,
+      y: -Math.random() * canvas.height * 2,
+      char: FLOWERS[Math.floor(Math.random() * FLOWERS.length)],
+      size: 1.6 + Math.random() * 3.2,
+      speed: 0.7 + Math.random() * 1.5,
+      drift: (Math.random() - 0.5) * 0.6,
+      rot: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() - 0.5) * 0.05,
+      alpha: 0.75 + Math.random() * 0.25,
+      side: 'right'
+    });
+  }
+
+  // TOP edge flowers raining down across full width
+  for (let i = 0; i < 15; i++) {
+    flowers.push({
+      x: Math.random() * canvas.width,
+      y: -Math.random() * canvas.height * 0.5,
+      char: FLOWERS[Math.floor(Math.random() * FLOWERS.length)],
+      size: 1.2 + Math.random() * 2.2,
+      speed: 1.2 + Math.random() * 2,
+      drift: (Math.random() - 0.5) * 1.2,
+      rot: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() - 0.5) * 0.06,
+      alpha: 0.6 + Math.random() * 0.4,
+      side: 'top'
+    });
+  }
+
+  function loop() {
+    if (!loveRunning) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw rising hearts (center)
+    particles.forEach(p => {
+      p.y -= p.speed;
+      p.x += p.drift;
+      p.rot += p.rotSpeed;
+      if (p.y < -100) {
+        p.y = canvas.height + 60;
+        p.x = canvas.width * 0.2 + Math.random() * canvas.width * 0.6;
+        p.char = HEART_CHARS[Math.floor(Math.random() * HEART_CHARS.length)];
+      }
+      ctx.save();
+      ctx.globalAlpha = p.alpha;
+      ctx.font = `${p.size}rem serif`;
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillText(p.char, 0, 0);
+      ctx.restore();
+    });
+
+    // Draw falling flowers
+    flowers.forEach(f => {
+      f.y += f.speed;
+      f.x += f.drift;
+      f.rot += f.rotSpeed;
+
+      // Reset when off bottom
+      if (f.y > canvas.height + 100) {
+        f.y = -80;
+        f.char = FLOWERS[Math.floor(Math.random() * FLOWERS.length)];
+        f.size = 1.6 + Math.random() * 3.2;
+        f.speed = 0.7 + Math.random() * 1.5;
+        if (f.side === 'left') {
+          f.x = Math.random() * canvas.width * 0.18;
+        } else if (f.side === 'right') {
+          f.x = canvas.width * 0.82 + Math.random() * canvas.width * 0.18;
+        } else {
+          f.x = Math.random() * canvas.width;
+        }
+      }
+
+      // Keep left flowers on left, right on right
+      if (f.side === 'left' && f.x > canvas.width * 0.22) f.drift = -Math.abs(f.drift);
+      if (f.side === 'right' && f.x < canvas.width * 0.78) f.drift = Math.abs(f.drift);
+
+      ctx.save();
+      ctx.globalAlpha = f.alpha;
+      ctx.font = `${f.size}rem serif`;
+      ctx.translate(f.x, f.y);
+      ctx.rotate(f.rot);
+      ctx.fillText(f.char, 0, 0);
+      ctx.restore();
+    });
+
+    loveAnimId = requestAnimationFrame(loop);
+  }
+  loop();
+}
+
+function stopLoveCanvas() {
+  loveRunning = false;
+  if (loveAnimId) cancelAnimationFrame(loveAnimId);
+}
+</script>
+
 </body>
 </html>
